@@ -166,6 +166,15 @@ body.role-reception .admin-only{display:none !important;}
                     <div class="form-group"><label>पासपोर्ट नम्बर *</label><input type="text" id="passport" class="form-control" required></div>
                     <div class="form-group"><label>फोन नम्बर</label><input type="text" id="phone" class="form-control"></div>
                     <div class="form-group"><label>ठेगाना</label><input type="text" id="address" class="form-control" placeholder="जिल्ला/गाउँ"></div>
+                    <div class="form-group"><label>लिङ्ग (Gender)</label>
+                        <select id="gender" class="form-control">
+                            <option value="">— छान्नुहोस् —</option>
+                            <option value="पुरुष">पुरुष (Male)</option>
+                            <option value="महिला">महिला (Female)</option>
+                            <option value="अन्य">अन्य (Other)</option>
+                        </select>
+                    </div>
+                    <div class="form-group"><label>उमेर (Age)</label><input type="number" id="age" class="form-control" min="18" max="70" placeholder="वर्षमा"></div>
                     <div class="form-group"><label>जाने देश *</label><input type="text" id="country" class="form-control" required></div>
                     <div class="form-group"><label>Job Title *</label><input type="text" id="job" class="form-control" required></div>
                     <div class="form-group"><label>कम्पनी / माग (Demand)</label><input type="text" id="company" class="form-control"></div>
@@ -219,6 +228,15 @@ body.role-reception .admin-only{display:none !important;}
                 <div class="form-group"><label>पासपोर्ट</label><input type="text" id="edit-passport" class="form-control"></div>
                 <div class="form-group"><label>फोन</label><input type="text" id="edit-phone" class="form-control"></div>
                 <div class="form-group"><label>ठेगाना</label><input type="text" id="edit-address" class="form-control"></div>
+                <div class="form-group"><label>लिङ्ग</label>
+                    <select id="edit-gender" class="form-control">
+                        <option value="">— छान्नुहोस् —</option>
+                        <option value="पुरुष">पुरुष</option>
+                        <option value="महिला">महिला</option>
+                        <option value="अन्य">अन्य</option>
+                    </select>
+                </div>
+                <div class="form-group"><label>उमेर</label><input type="number" id="edit-age" class="form-control" min="18" max="70"></div>
                 <div class="form-group"><label>देश</label><input type="text" id="edit-country" class="form-control"></div>
                 <div class="form-group"><label>Job Title</label><input type="text" id="edit-job" class="form-control"></div>
                 <div class="form-group"><label>कम्पनी / माग</label><input type="text" id="edit-company" class="form-control"></div>
@@ -239,6 +257,17 @@ body.role-reception .admin-only{display:none !important;}
                 <label style="font-weight:700;display:block;margin-bottom:8px;">📄 कागजात Checklist <span id="docs-count" style="font-weight:400;color:var(--text-muted);"></span></label>
                 <div class="docs-grid" id="docs-grid"></div>
                 <button class="btn doc-only" style="background:var(--warning);width:auto;padding:8px 20px;" onclick="saveDocs()">Checklist सुरक्षित गर्नुहोस्</button>
+            </div>
+
+            <div class="docs-box" style="background:#eff6ff;border-color:var(--primary-color);">
+                <label style="font-weight:700;display:block;margin-bottom:8px;">📎 कागजात फाइलहरू (Scan / Photo / PDF)</label>
+                <div id="files-list" style="margin-bottom:12px;font-size:13px;"></div>
+                <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+                    <select id="upload-doc-type" class="form-control" style="width:auto;min-width:160px;"></select>
+                    <input type="file" id="upload-file" accept="image/*,application/pdf" class="form-control" style="width:auto;flex:1;min-width:180px;">
+                    <button class="btn btn-sm" onclick="uploadDoc()">⬆️ Upload</button>
+                </div>
+                <p style="font-size:12px;color:var(--text-muted);margin-top:6px;">फाइल ५ MB भन्दा सानो हुनुपर्छ। Upload भएका फाइल Admin को Google Drive मा सुरक्षित बस्छन्।</p>
             </div>
 
             <div class="admin-only" style="display:flex;gap:10px;margin-bottom:20px;">
@@ -350,6 +379,9 @@ function applyRoleUI(){
   // filter dropdown भर्ने
   const sf = document.getElementById('status-filter');
   sf.innerHTML = '<option value="">— सबै Status —</option>' + STATUS_ORDER.map(s=>`<option value="${s}">${STATUS_META[s][1]}</option>`).join('');
+  // upload doc type dropdown भर्ने
+  const ud = document.getElementById('upload-doc-type');
+  ud.innerHTML = DOC_ITEMS.map(d=>`<option value="${d.label}">${d.label}</option>`).join('') + '<option value="अन्य">अन्य</option>';
 }
 
 // ================= API =================
@@ -498,12 +530,16 @@ document.getElementById('worker-form').addEventListener('submit', async function
   e.preventDefault();
   const passport = cleanPassport(document.getElementById('passport').value);
   if(!validPassport(passport)){ alert(PP_ERROR); return; }
+  const ageVal = document.getElementById('age').value;
+  if(ageVal && Number(ageVal) < 18){ alert('⛔ १८ वर्षमुनिको व्यक्ति वैदेशिक रोजगारमा जान मिल्दैन — उमेर जाँच गर्नुहोस्।'); return; }
   // Duplicate जाँच server ले सबै स्टाफको डाटामा गर्छ — त्यसैले यहाँ blocking call
   const w = {
     name: document.getElementById('name').value.trim(),
     passport,
     phone: document.getElementById('phone').value.trim(),
     address: document.getElementById('address').value.trim(),
+    gender: document.getElementById('gender').value,
+    age: ageVal ? Number(ageVal) : '',
     country: document.getElementById('country').value.trim(),
     job: document.getElementById('job').value.trim(),
     company: document.getElementById('company').value.trim(),
@@ -612,6 +648,7 @@ function fillModal(w){
   document.getElementById('update-status-select').value = w.status;
   document.getElementById('modal-basic-info').innerHTML = `
     <b>पासपोर्ट:</b> ${w.passport} &nbsp; | &nbsp; <b>फोन:</b> ${w.phone||'-'} &nbsp; | &nbsp; <b>ठेगाना:</b> ${w.address||'-'}<br>
+    <b>लिङ्ग:</b> ${w.gender||'-'} &nbsp; | &nbsp; <b>उमेर:</b> ${w.age||'-'}<br>
     <b>देश/काम:</b> ${w.country} / ${w.job} &nbsp; | &nbsp; <b>कम्पनी/माग:</b> ${w.company||'-'}<br>
     <b>🧑‍💼 Entered By:</b> <span style="color:#0f766e;font-weight:700">${w.enteredByName||w.enteredBy}</span> &nbsp; | &nbsp; <b>दर्ता मिति:</b> ${(w.createdAt||'').slice(0,10)}<br>
     <b>Status:</b> ${statusBadge(w.status)} &nbsp; | &nbsp; <b>🗓️ QVC मिति:</b> ${w.qvcDate ? '<span style="color:#9f1239;font-weight:700">'+w.qvcDate+'</span>' : '-'} &nbsp; | &nbsp; <b>✈️ उडान मिति:</b> ${w.flightDate ? '<span style="color:var(--info);font-weight:700">'+w.flightDate+'</span>' : '<span style="color:var(--warning)">तोकिएको छैन</span>'}<br>
@@ -623,6 +660,11 @@ function fillModal(w){
     <label><input type="checkbox" id="doc-${d.key}" ${docs[d.key]?'checked':''} ${canTick?'':'disabled'}> ${d.label}</label>`).join('');
   const got = DOC_ITEMS.filter(d=>docs[d.key]).length;
   document.getElementById('docs-count').textContent = `(${got}/${DOC_ITEMS.length} प्राप्त)`;
+  // Uploaded files सूची
+  const files = w.files || [];
+  document.getElementById('files-list').innerHTML = files.map(f=>
+    `<div class="history-item">📄 <b>${f.docType}</b> — <a href="${f.url}" target="_blank" style="color:var(--primary-color);">${f.name}</a> <small style="color:var(--text-muted)">(${f.by}, ${(f.time||'').slice(0,10)})</small>${isAdmin()?` &nbsp;<button class="btn btn-sm btn-danger" onclick="deleteDoc('${f.fileId}')">हटाउने</button>`:''}</div>`
+  ).join('') || '<div style="color:var(--text-muted)">कुनै फाइल upload भएको छैन</div>';
 }
 function openModal(id){
   editingId = id;
@@ -715,6 +757,8 @@ function toggleEditMode(show){
     document.getElementById('edit-passport').value = w.passport;
     document.getElementById('edit-phone').value = w.phone || '';
     document.getElementById('edit-address').value = w.address || '';
+    document.getElementById('edit-gender').value = w.gender || '';
+    document.getElementById('edit-age').value = w.age || '';
     document.getElementById('edit-country').value = w.country;
     document.getElementById('edit-job').value = w.job;
     document.getElementById('edit-company').value = w.company || '';
@@ -735,6 +779,10 @@ function saveEditedData(){
   w.passport = newPassport;
   w.phone = document.getElementById('edit-phone').value.trim();
   w.address = document.getElementById('edit-address').value.trim();
+  w.gender = document.getElementById('edit-gender').value;
+  const eAge = document.getElementById('edit-age').value;
+  if(eAge && Number(eAge) < 18){ alert('⛔ १८ वर्षमुनिको उमेर राख्न मिल्दैन।'); return; }
+  w.age = eAge ? Number(eAge) : '';
   w.country = document.getElementById('edit-country').value.trim();
   w.job = document.getElementById('edit-job').value.trim();
   w.company = document.getElementById('edit-company').value.trim();
@@ -745,7 +793,8 @@ function saveEditedData(){
   renderTable();
   api('update', { worker: {
     id:w.id, name:w.name, passport:w.passport, phone:w.phone, address:w.address,
-    country:w.country, job:w.job, company:w.company, flightDate:w.flightDate, remarks:w.remarks
+    country:w.country, job:w.job, company:w.company, flightDate:w.flightDate, remarks:w.remarks,
+    gender:w.gender, age:w.age
   }}).then(r=>{
     if(r.ok && r.worker) mergeWorker(r.worker);
     else syncFailed(r, 'संशोधन');
@@ -760,6 +809,45 @@ async function deleteWorker(){
     closeModal();
     renderTable();
   } else syncFailed(r, 'मेटाउने');
+}
+
+// ================= FILE UPLOAD =================
+async function uploadDoc(){
+  const w = workers.find(x=>x.id===editingId);
+  if(!w) return;
+  const fileInput = document.getElementById('upload-file');
+  const f = fileInput.files[0];
+  if(!f){ alert('पहिला फाइल छान्नुहोस्।'); return; }
+  if(f.size > 5*1024*1024){ alert('⚠️ फाइल ५ MB भन्दा ठूलो छ। फोटो सानो बनाएर (compress गरेर) फेरि प्रयास गर्नुहोस्।'); return; }
+  const docType = document.getElementById('upload-doc-type').value;
+  let base64;
+  try{
+    base64 = await new Promise((res,rej)=>{
+      const r = new FileReader();
+      r.onload = ()=>res(r.result.split(',')[1]);
+      r.onerror = ()=>rej(new Error('read failed'));
+      r.readAsDataURL(f);
+    });
+  }catch(e){ alert('फाइल पढ्न सकिएन।'); return; }
+  const r = await api('uploaddoc', { id: w.id, docType, filename: f.name, mimeType: f.type, base64Data: base64 }, null, true);
+  if(r.ok && r.worker){
+    mergeWorker(r.worker);
+    fileInput.value = '';
+    alert('✅ "' + docType + '" upload भयो।');
+  } else if(r.error==='FORBIDDEN'){
+    alert('माफ गर्नुहोस्, आफूले इन्ट्री गरेको कामदारमा मात्र upload गर्न मिल्छ।');
+  } else if(r.error==='NETWORK'){
+    alert('⚠️ Internet समस्या — upload भएन। फेरि प्रयास गर्नुहोस्।');
+  } else {
+    alert('Upload भएन: ' + (r.error||''));
+  }
+}
+async function deleteDoc(fileId){
+  if(!isAdmin()){ alert('फाइल हटाउने अधिकार Admin लाई मात्र छ।'); return; }
+  if(!confirm('यो फाइल हटाउने हो? (Drive को Trash मा जान्छ)')) return;
+  const r = await api('deletedoc', { id: editingId, fileId }, null, true);
+  if(r.ok && r.worker) mergeWorker(r.worker);
+  else syncFailed(r, 'फाइल हटाउने');
 }
 
 // ================= PRINT =================
@@ -817,7 +905,7 @@ function printWorker(){
   const docLines = DOC_ITEMS.map(d=>(docs[d.key]?'☑':'☐')+' '+d.label).join(' &nbsp;&nbsp; ');
   openPrintWindow(printHeaderHtml('कामदार विवरण') + `<div class="box">
     <b>नाम:</b> ${w.name} &nbsp; | &nbsp; <b>पासपोर्ट:</b> ${w.passport} &nbsp; | &nbsp; <b>फोन:</b> ${w.phone||'-'}<br>
-    <b>ठेगाना:</b> ${w.address||'-'}<br>
+    <b>लिङ्ग:</b> ${w.gender||'-'} &nbsp; | &nbsp; <b>उमेर:</b> ${w.age||'-'} &nbsp; | &nbsp; <b>ठेगाना:</b> ${w.address||'-'}<br>
     <b>देश:</b> ${w.country} &nbsp; | &nbsp; <b>Job Title:</b> ${w.job} &nbsp; | &nbsp; <b>कम्पनी/माग:</b> ${w.company||'-'}<br>
     <b>Status:</b> ${STATUS_META[w.status]?STATUS_META[w.status][1]:w.status}
     ${w.qvcDate?' &nbsp; | &nbsp; <b>QVC मिति:</b> '+w.qvcDate:''}
